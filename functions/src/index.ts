@@ -47,7 +47,7 @@ function getNotification(activity: LiveActivity, departures: DepartureInfo[]): a
   const notification = new apn.Notification();
   notification.topic = `${environment.appBundleId.value()}.push-type.liveactivity`;
   notification.pushType = "liveactivity";
-  notification.priority = 5;
+  notification.priority = 10;
 
   notification.aps = {
     "timestamp": Math.floor(Date.now() / 1000),
