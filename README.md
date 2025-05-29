@@ -2,4 +2,4 @@
 
 ## Firebase Cloud Function
 
-See [functions/README](functions/README.md)
+See [functions](functions/)
