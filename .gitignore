@@ -4,6 +4,7 @@
 !firebase.json
 !tsconfig.json
 !.gitignore
+!README.md
 
 
 # Logs
