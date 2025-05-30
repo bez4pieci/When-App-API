@@ -9,7 +9,7 @@ const hafasClient = createClient(bvgProfile, "departures-api");
 export async function getDepartures(activity: LiveActivity): Promise<DepartureInfo[]> {
   const departures: Departures = await hafasClient.departures(activity.stationId, {
     results: 4,
-    duration: 60, // Look ahead 60 minutes
+    duration: 60 * 8, // Look ahead 60 minutes
   });
 
   return departures.departures.map((dep: Alternative) => {
