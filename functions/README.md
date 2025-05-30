@@ -1,12 +1,12 @@
-# Departures API
+# When App API
 
 ## Firebase Cloud Function
 
-This Firebase Cloud Function provides a backend service for [Departures iOS app](https://github.com/bez4pieci/Departures-iOS) that displays public transport departures from BVG (Berlin public transport) stations. It supports iOS Live Activities, which are updated with updated departure information via push notifications every 30 seconds.
+This Firebase Cloud Function provides a backend service for [Departures iOS app](https://github.com/bez4pieci/When-App-iOS) that displays public transport departures from BVG (Berlin public transport) stations. It supports iOS Live Activities, which are updated with updated departure information via push notifications every 30 seconds.
 
 ## Features
 
-- Scheduled function runs every 30 seconds
+- Scheduled function runs every minute
 - Checks active Live Activities from Firestore
 - Fetches real-time departure data from BVG
 - Sends push notifications to update iOS Live Activities

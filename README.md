@@ -1,4 +1,4 @@
-# Departures API
+# When App API
 
 ## Firebase Cloud Function
 
