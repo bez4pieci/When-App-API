@@ -17,8 +17,8 @@ export async function getDepartures(activity: LiveActivity): Promise<DepartureIn
     const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;
 
     return {
-      lineLabel: dep.line?.name || "Unknown",
-      destination: dep.destination?.name || "Unknown",
+      lineLabel: dep.line?.name || "?",
+      destination: dep.direction || dep.destination?.name || "Unknown",
       plannedTime,
       predictedTime,
       isCancelled: dep.cancelled || false,
