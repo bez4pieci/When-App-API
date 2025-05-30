@@ -101,10 +101,9 @@ async function _update() {
         const result = await apnProvider.send(notification, activity.pushToken);
 
         if (result.failed.length > 0) {
-          logError(`Failed to send notification for activity ${activity.activityId}:`, result.failed[0].response);
-
-          console.log(result);
-          console.log(result.failed[0].response);
+          logError(
+            `Failed to send notification for activity ${activity.activityId}: ${result.failed[0].response?.reason}`
+          );
         } else {
           log(`Successfully sent update for activity ${activity.activityId}`);
 
