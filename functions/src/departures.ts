@@ -20,8 +20,13 @@ const productMapping: Record<ProductInApp, string> = {
 
 export async function getDepartures(activity: LiveActivity): Promise<DepartureInfo[]> {
   const departures: Departures = await hafasClient.departures(activity.stationId, {
-    results: 4,
-    duration: 60 * 8, // Look ahead 8 hours, so that we catch departures in the morning, if queried in the evening
+    // We need 4 departures, but there is no filter for cancelled departures, so we need to fetch more and filter later
+    results: activity.showCancelledDepartures ? 4 : 10,
+
+    // Look ahead 8 hours, so that we catch departures in the morning, if queried in the evening
+    duration: 60 * 8,
+
+    // Only fetch products that are specified in the activity
     products: Object.fromEntries(
       Object.entries(productMapping).map<[string, boolean]>(([key, value]) => [
         value,
@@ -31,6 +36,7 @@ export async function getDepartures(activity: LiveActivity): Promise<DepartureIn
   });
 
   return departures.departures
+    .filter((dep: Alternative) => activity.showCancelledDepartures || !dep.cancelled)
     .map((dep: Alternative) => {
       const plannedTime = dep.plannedWhen ? new Date(dep.plannedWhen).getTime() / 1000 : 0;
       const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;

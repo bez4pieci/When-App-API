@@ -20,6 +20,7 @@ export interface LiveActivity {
   stationId: string;
   stationName: string;
   enabledProducts: ProductInApp[];
+  showCancelledDepartures: boolean;
 }
 
 export interface DepartureInfo {
