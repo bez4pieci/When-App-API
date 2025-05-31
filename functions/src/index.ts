@@ -29,7 +29,7 @@ async function _update() {
       keyId: environment.apnsKeyId.value(),
       teamId: environment.appleDveloperTeamId.value(),
     },
-    production: true,
+    production: process.env.NODE_ENV === "production",
   });
 
   try {
