@@ -12,16 +12,23 @@ export async function getDepartures(activity: LiveActivity): Promise<DepartureIn
     duration: 60 * 8, // Look ahead 60 minutes
   });
 
-  return departures.departures.map((dep: Alternative) => {
-    const plannedTime = dep.plannedWhen ? new Date(dep.plannedWhen).getTime() / 1000 : 0;
-    const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;
+  return departures.departures
+    .map((dep: Alternative) => {
+      const plannedTime = dep.plannedWhen ? new Date(dep.plannedWhen).getTime() / 1000 : 0;
+      const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;
 
-    return {
-      lineLabel: dep.line?.name || "?",
-      destination: dep.direction || dep.destination?.name || "Unknown",
-      plannedTime,
-      predictedTime,
-      isCancelled: dep.cancelled || false,
-    };
-  });
+      return {
+        lineLabel: dep.line?.name || "?",
+        destination: dep.direction || dep.destination?.name || "Unknown",
+        plannedTime,
+        predictedTime,
+        isCancelled: dep.cancelled || false,
+      };
+    })
+    .sort((a, b) => {
+      // Use predictedTime if available, otherwise use plannedTime as the actual time
+      const timeA = a.predictedTime ?? a.plannedTime;
+      const timeB = b.predictedTime ?? b.plannedTime;
+      return timeA - timeB;
+    });
 }
