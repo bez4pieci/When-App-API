@@ -1,14 +1,25 @@
 import type { Timestamp } from "firebase-admin/firestore";
 
+export enum ProductInApp {
+  suburbanTrain = "suburbanTrain",
+  subway = "subway",
+  tram = "tram",
+  bus = "bus",
+  regionalTrain = "regionalTrain",
+  ferry = "ferry",
+  highSpeedTrain = "highSpeedTrain",
+  onDemand = "onDemand",
+  cablecar = "cablecar",
+}
+
 export interface LiveActivity {
   activityId: string;
   userDeviceId: string;
   createdAt: Timestamp;
-  isActive: boolean;
   pushToken: string;
   stationId: string;
   stationName: string;
-  updatedAt: Timestamp;
+  enabledProducts: ProductInApp[];
 }
 
 export interface DepartureInfo {
