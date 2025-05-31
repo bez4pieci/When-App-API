@@ -1,7 +1,7 @@
 import { getEndNotification } from "./apns.js";
 import { getUpdateNotification } from "./apns.js";
 import { getDepartures } from "./departures.js";
-import type { DepartureInfo, LiveActivity } from "./types.js";
+import { DepartureInfo, LiveActivity } from "./types.js";
 import * as apn from "@parse/node-apn";
 import { initializeApp } from "firebase-admin/app";
 import { Timestamp, getFirestore } from "firebase-admin/firestore";
@@ -18,6 +18,61 @@ const environment = {
 };
 
 initializeApp();
+
+// Direct function for testing
+export const updateLiveActivities = onCall(
+  {
+    region: "europe-west1",
+  },
+  async () => await _update()
+);
+
+// Scheduled function to run every 30 seconds
+export const updateLiveActivitiesOnSchedule = onSchedule(
+  {
+    schedule: "* * * * *",
+    timeZone: "Europe/Berlin",
+    region: "europe-west1",
+  },
+  async event => await _update()
+);
+
+// ------------------------------------------------------------------------------------------------
+// Private
+// ------------------------------------------------------------------------------------------------
+
+async function _sendUpdateNotification(
+  activity: LiveActivity,
+  departuresCache: Record<string, DepartureInfo[]>,
+  apnProvider: apn.Provider
+) {
+  const departures = departuresCache[activity.stationId] || (await getDepartures(activity));
+  departuresCache[activity.stationId] = departures;
+
+  log(`Got ${departures.length} departures for station ${activity.stationName}`);
+
+  const notification = getUpdateNotification(environment.appBundleId.value(), activity, departures);
+  const result = await apnProvider.send(notification, activity.pushToken);
+
+  if (result.failed.length > 0) {
+    logError(`Failed to send notification for activity ${activity.activityId}: ${result.failed[0].response?.reason}`);
+  } else {
+    log(`Successfully sent update for activity ${activity.activityId}`);
+  }
+}
+
+async function _sendEndNotification(activity: LiveActivity, apnProvider: apn.Provider) {
+  log(`Ending activity ${activity.activityId} (older than 1 hour)`);
+
+  const notification = getEndNotification(environment.appBundleId.value(), activity);
+  const result = await apnProvider.send(notification, activity.pushToken);
+
+  if (result.failed.length > 0) {
+    logError(`Failed to end activity ${activity.activityId}: ${result.failed[0].response?.reason}`);
+  } else {
+    log(`Successfully ended activity ${activity.activityId} from ${activity.createdAt.toDate().toISOString()}`);
+  }
+}
 
 async function _update() {
   log("Starting live activities update");
@@ -51,34 +106,9 @@ async function _update() {
         const isOlderThanOneHour = activityAge.seconds < oneHourAgo.seconds;
 
         if (isOlderThanOneHour) {
-          // Send end notification for activities older than 1 hour
-          log(`Ending activity ${activity.activityId} (older than 1 hour)`);
-
-          const notification = getEndNotification(environment.appBundleId.value(), activity);
-          const result = await apnProvider.send(notification, activity.pushToken);
-
-          if (result.failed.length > 0) {
-            logError(`Failed to end activity ${activity.activityId}: ${result.failed[0].response?.reason}`);
-          } else {
-            log(`Successfully ended activity ${activity.activityId} from ${activity.createdAt.toDate().toISOString()}`);
-          }
+          await _sendEndNotification(activity, apnProvider);
         } else {
-          // Send update notification for activities less than 1 hour old
-          const departures = departuresCache[activity.stationId] || (await getDepartures(activity));
-          departuresCache[activity.stationId] = departures;
-
-          log(`Got ${departures.length} departures for station ${activity.stationName}`);
-
-          const notification = getUpdateNotification(environment.appBundleId.value(), activity, departures);
-          const result = await apnProvider.send(notification, activity.pushToken);
-
-          if (result.failed.length > 0) {
-            logError(
-              `Failed to send notification for activity ${activity.activityId}: ${result.failed[0].response?.reason}`
-            );
-          } else {
-            log(`Successfully sent update for activity ${activity.activityId}`);
-          }
+          await _sendUpdateNotification(activity, departuresCache, apnProvider);
         }
       } catch (err) {
         logError(`Error processing activity ${activity.activityId}:`, err);
@@ -91,21 +121,3 @@ async function _update() {
     logError("Error in updateLiveActivities:", err);
   }
 }
-
-// Direct function for testing
-export const updateLiveActivities = onCall(
-  {
-    region: "europe-west1",
-  },
-  async () => await _update()
-);
-
-// Scheduled function to run every 30 seconds
-export const updateLiveActivitiesOnSchedule = onSchedule(
-  {
-    schedule: "* * * * *",
-    timeZone: "Europe/Berlin",
-    region: "europe-west1",
-  },
-  async event => await _update()
-);
