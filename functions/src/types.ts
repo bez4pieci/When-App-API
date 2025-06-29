@@ -1,4 +1,12 @@
 import type { Timestamp } from "firebase-admin/firestore";
+import { defineString } from "firebase-functions/params";
+
+export interface Environment {
+  apnsKey: ReturnType<typeof defineString>;
+  apnsKeyId: ReturnType<typeof defineString>;
+  appleDveloperTeamId: ReturnType<typeof defineString>;
+  appBundleId: ReturnType<typeof defineString>;
+}
 
 export enum ProductInApp {
   suburbanTrain = "suburbanTrain",
