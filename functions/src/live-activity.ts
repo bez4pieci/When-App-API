@@ -1,6 +1,6 @@
 import { getEndNotification } from "./apns.js";
 import { getUpdateNotification } from "./apns.js";
-import { getDepartures } from "./departures.js";
+import { getDeparturesForActivity } from "./departures.js";
 import { DepartureInfo, Environment, LiveActivity } from "./types.js";
 import * as apn from "@parse/node-apn";
 import { Timestamp, getFirestore } from "firebase-admin/firestore";
@@ -38,10 +38,10 @@ export async function update(environment: Environment) {
         const isOlderThanOneHour = activityAge.seconds < oneHourAgo.seconds;
 
         if (isOlderThanOneHour) {
-          await _sendEndNotification(activity, apnProvider, environment.appBundleId.value());
+          await _sendEndNotification(environment, activity, apnProvider);
           await db.collection("liveActivities").doc(doc.id).delete();
         } else {
-          await _sendUpdateNotification(activity, departuresCache, apnProvider, environment.appBundleId.value());
+          await _sendUpdateNotification(environment, activity, departuresCache, apnProvider);
         }
       } catch (err) {
         logError(`Error processing activity ${activity.activityId}:`, err);
@@ -58,17 +58,17 @@ export async function update(environment: Environment) {
 // MARK: - Private
 
 async function _sendUpdateNotification(
+  environment: Environment,
   activity: LiveActivity,
   departuresCache: Record<string, DepartureInfo[]>,
-  apnProvider: apn.Provider,
-  appBundleId: string
+  apnProvider: apn.Provider
 ) {
-  const departures = departuresCache[activity.stationId] || (await getDepartures(activity));
+  const departures = departuresCache[activity.stationId] || (await getDeparturesForActivity(environment, activity));
   departuresCache[activity.stationId] = departures;
 
   log(`Got ${departures.length} departures for station ${activity.stationName}`);
 
-  const notification = getUpdateNotification(appBundleId, activity, departures);
+  const notification = getUpdateNotification(environment.appBundleId.value(), activity, departures);
   const result = await apnProvider.send(notification, activity.pushToken);
 
   if (result.failed.length > 0) {
@@ -78,10 +78,10 @@ async function _sendUpdateNotification(
   }
 }
 
-async function _sendEndNotification(activity: LiveActivity, apnProvider: apn.Provider, appBundleId: string) {
+async function _sendEndNotification(environment: Environment, activity: LiveActivity, apnProvider: apn.Provider) {
   log(`Ending activity ${activity.activityId} (older than 1 hour)`);
 
-  const notification = getEndNotification(appBundleId, activity);
+  const notification = getEndNotification(environment.appBundleId.value(), activity);
   const result = await apnProvider.send(notification, activity.pushToken);
 
   if (result.failed.length > 0) {

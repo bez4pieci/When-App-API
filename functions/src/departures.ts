@@ -1,10 +1,6 @@
-import { DepartureInfo, LiveActivity, ProductInApp } from "./types.js";
+import { DepartureInfo, Environment, LiveActivity, ProductInApp } from "./types.js";
 import { Alternative } from "hafas-client";
 import { Departures } from "hafas-client";
-import { createClient } from "hafas-client";
-import { profile as bvgProfile } from "hafas-client/p/bvg/index.js";
-
-const hafasClient = createClient(bvgProfile, "departures-api");
 
 const productMapping: Record<ProductInApp, string> = {
   [ProductInApp.suburbanTrain]: "suburban",
@@ -18,25 +14,50 @@ const productMapping: Record<ProductInApp, string> = {
   [ProductInApp.cablecar]: "cablecar", // TODO: Verify name
 };
 
-export async function getDepartures(activity: LiveActivity): Promise<DepartureInfo[]> {
-  const departures: Departures = await hafasClient.departures(activity.stationId, {
+export async function getDeparturesForActivity(
+  environment: Environment,
+  activity: LiveActivity
+): Promise<DepartureInfo[]> {
+  return await getDepartures(
+    environment,
+    activity.stationId,
+    activity.enabledProducts,
+    activity.showCancelledDepartures
+  );
+}
+
+export async function getDeparturesForStation(
+  environment: Environment,
+  stationId: string,
+  products: ProductInApp[],
+  showCancelledDepartures: boolean
+): Promise<DepartureInfo[]> {
+  return await getDepartures(environment, stationId, products, showCancelledDepartures);
+}
+
+async function getDepartures(
+  environment: Environment,
+  stationId: string,
+  products: ProductInApp[],
+  showCancelledDepartures: boolean
+): Promise<DepartureInfo[]> {
+  const departures: Departures = await environment.hafasClient.departures(stationId, {
     // We need 4 departures, but there is no filter for cancelled departures, so we need to fetch more and filter later
-    results: activity.showCancelledDepartures ? 4 : 10,
+    results: showCancelledDepartures ? 4 : 10,
 
     // Look ahead 8 hours, so that we catch departures in the morning, if queried in the evening
     duration: 60 * 8,
 
-    // Only fetch products that are specified in the activity
     products: Object.fromEntries(
       Object.entries(productMapping).map<[string, boolean]>(([key, value]) => [
         value,
-        activity.enabledProducts.includes(key as ProductInApp),
+        products.includes(key as ProductInApp),
       ])
     ),
   });
 
   return departures.departures
-    .filter((dep: Alternative) => activity.showCancelledDepartures || !dep.cancelled)
+    .filter((dep: Alternative) => showCancelledDepartures || !dep.cancelled)
     .map((dep: Alternative) => {
       const plannedTime = dep.plannedWhen ? new Date(dep.plannedWhen).getTime() / 1000 : 0;
       const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;
