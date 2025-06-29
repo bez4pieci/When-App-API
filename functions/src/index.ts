@@ -44,7 +44,7 @@ export const searchStations = onCall(
       return { suggestions };
     } catch (err) {
       logError("searchStations: failed getting suggestions", err);
-      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed");
+      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed", err);
     }
   }
 );
@@ -77,7 +77,7 @@ export const listDepartures = onCall(
       return { departures };
     } catch (err) {
       logError("listDepartures: failed getting departures", err);
-      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed");
+      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed", err);
     }
   }
 );
