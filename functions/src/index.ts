@@ -77,7 +77,7 @@ export const listDepartures = onCall(
       return { departures };
     } catch (err) {
       logError("listDepartures: failed getting departures", err);
-      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed", err);
+      throw new HttpsError("unknown", (err as Error)?.message || "Listing departures failed", err);
     }
   }
 );
