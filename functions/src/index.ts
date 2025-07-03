@@ -22,7 +22,7 @@ const hafasClient = createClient(profile, "when-api");
 const environment: Environment = {
   apnsKey: defineString("APNS_KEY"),
   apnsKeyId: defineString("APNS_KEY_ID"),
-  appleDveloperTeamId: defineString("APPLE_DEVELOPER_TEAM_ID"),
+  appleDeveloperTeamId: defineString("APPLE_DEVELOPER_TEAM_ID"),
   appBundleId: defineString("APP_BUNDLE_ID"),
   hafasClient: hafasClient,
 };

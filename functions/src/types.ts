@@ -5,7 +5,7 @@ import { HafasClient } from "hafas-client";
 export interface Environment {
   apnsKey: ReturnType<typeof defineString>;
   apnsKeyId: ReturnType<typeof defineString>;
-  appleDveloperTeamId: ReturnType<typeof defineString>;
+  appleDeveloperTeamId: ReturnType<typeof defineString>;
   appBundleId: ReturnType<typeof defineString>;
   hafasClient: HafasClient;
 }
