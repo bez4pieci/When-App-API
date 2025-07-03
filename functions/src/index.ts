@@ -1,123 +1,117 @@
-import { getEndNotification } from "./apns.js";
-import { getUpdateNotification } from "./apns.js";
-import { getDepartures } from "./departures.js";
-import { DepartureInfo, LiveActivity } from "./types.js";
-import * as apn from "@parse/node-apn";
+import { getDeparturesForStation } from "./departures.js";
+import { update } from "./live-activity.js";
+import { search } from "./search-stations.js";
+import { Environment, Product } from "./types.js";
 import { initializeApp } from "firebase-admin/app";
-import { Timestamp, getFirestore } from "firebase-admin/firestore";
-import { onCall } from "firebase-functions/https";
 import { log, error as logError } from "firebase-functions/logger";
 import { defineString } from "firebase-functions/params";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { Profile, createClient } from "hafas-client";
+import { profile as bvgProfile } from "hafas-client/p/bvg/index.js";
+import { profile as vbbProfile } from "hafas-client/p/vbb/index.js";
 
-const environment = {
-  apnsKey: defineString("APNS_KEY"),
-  apnsKeyId: defineString("APNS_KEY_ID"),
-  appleDveloperTeamId: defineString("APPLE_DEVELOPER_TEAM_ID"),
-  appBundleId: defineString("APP_BUNDLE_ID"),
+const profiles = {
+  bvg: bvgProfile as Profile,
+  vbb: vbbProfile as Profile,
 };
 
+const profile = profiles.vbb;
+const hafasClient = createClient(profile, "when-api");
+
+const environment: Environment = {
+  apnsKey: defineString("APNS_KEY"),
+  apnsKeyId: defineString("APNS_KEY_ID"),
+  appleDeveloperTeamId: defineString("APPLE_DEVELOPER_TEAM_ID"),
+  appBundleId: defineString("APP_BUNDLE_ID"),
+  hafasClient: hafasClient,
+};
+
+const REGION = "europe-west1";
+const TIME_ZONE = "Europe/Berlin";
+
 initializeApp();
+
+// MARK: - Function for station search by partial name
+
+export const searchStations = onCall(
+  {
+    region: REGION,
+  },
+  async request => {
+    const query = request.data?.query;
+
+    if (typeof query !== "string" || !query.trim()) {
+      throw new HttpsError("invalid-argument", "Missing or invalid 'query' parameter");
+    }
+
+    try {
+      const results = await search(environment, query);
+      log(`searchStations: fetched ${results.length} results for query "${query}"`);
+      return { results };
+    } catch (err) {
+      logError(`searchStations: failed getting results for query "${query}"`, err);
+      throw new HttpsError("unknown", (err as Error)?.message || "Station search failed", err);
+    }
+  }
+);
+
+// MARK: - Function for listing departures for a station id
+
+export const queryDepartures = onCall(
+  {
+    region: REGION,
+  },
+  async request => {
+    const stationId = request.data?.stationId;
+    const products = (request.data?.products || []) as Product[];
+    const showCancelledDepartures = request.data?.showCancelledDepartures || false;
+
+    if (typeof stationId !== "string" || !stationId.trim()) {
+      throw new HttpsError("invalid-argument", "Missing or invalid 'stationId' parameter");
+    }
+
+    if (!Array.isArray(products)) {
+      throw new HttpsError("invalid-argument", "Invalid 'products' parameter");
+    }
+    if (products.some(product => !Object.values(Product).includes(product))) {
+      throw new HttpsError("invalid-argument", "Invalid 'products' parameter");
+    }
+
+    try {
+      const departures = await getDeparturesForStation({
+        environment,
+        stationId,
+        products,
+        showCancelledDepartures,
+      });
+      log(
+        `queryDepartures: fetched ${departures.length} departures for station ${stationId}, products: ${products.join(", ")}, showCancelledDepartures: ${showCancelledDepartures}`
+      );
+      return { departures };
+    } catch (err) {
+      logError(`queryDepartures: failed getting departures for station ${stationId}`, err);
+      throw new HttpsError("unknown", (err as Error)?.message || "Querying departures failed", err);
+    }
+  }
+);
+
+// MARK: - Functions for updating live activities
 
 // Direct function for testing
 export const updateLiveActivities = onCall(
   {
-    region: "europe-west1",
+    region: REGION,
   },
-  async () => await _update()
+  async () => await update(environment)
 );
 
 // Scheduled function to run every 30 seconds
 export const updateLiveActivitiesOnSchedule = onSchedule(
   {
     schedule: "* * * * *",
-    timeZone: "Europe/Berlin",
-    region: "europe-west1",
+    timeZone: TIME_ZONE,
+    region: REGION,
   },
-  async event => await _update()
+  async event => await update(environment)
 );
-
-// ------------------------------------------------------------------------------------------------
-// Private
-// ------------------------------------------------------------------------------------------------
-
-async function _sendUpdateNotification(
-  activity: LiveActivity,
-  departuresCache: Record<string, DepartureInfo[]>,
-  apnProvider: apn.Provider
-) {
-  const departures = departuresCache[activity.stationId] || (await getDepartures(activity));
-  departuresCache[activity.stationId] = departures;
-
-  log(`Got ${departures.length} departures for station ${activity.stationName}`);
-
-  const notification = getUpdateNotification(environment.appBundleId.value(), activity, departures);
-  const result = await apnProvider.send(notification, activity.pushToken);
-
-  if (result.failed.length > 0) {
-    logError(`Failed to send notification for activity ${activity.activityId}: ${result.failed[0].response?.reason}`);
-  } else {
-    log(`Successfully sent update for activity ${activity.activityId}`);
-  }
-}
-
-async function _sendEndNotification(activity: LiveActivity, apnProvider: apn.Provider) {
-  log(`Ending activity ${activity.activityId} (older than 1 hour)`);
-
-  const notification = getEndNotification(environment.appBundleId.value(), activity);
-  const result = await apnProvider.send(notification, activity.pushToken);
-
-  if (result.failed.length > 0) {
-    logError(`Failed to end activity ${activity.activityId}: ${result.failed[0].response?.reason}`);
-  } else {
-    log(`Successfully ended activity ${activity.activityId} from ${activity.createdAt.toDate().toISOString()}`);
-  }
-}
-
-async function _update() {
-  log("Starting live activities update");
-
-  // Initialize APNs provider
-  const apnProvider = new apn.Provider({
-    token: {
-      key: environment.apnsKey.value(),
-      keyId: environment.apnsKeyId.value(),
-      teamId: environment.appleDveloperTeamId.value(),
-    },
-    production: process.env.NODE_ENV === "production",
-  });
-
-  try {
-    const db = getFirestore();
-    const activitiesSnapshot = await db.collection("liveActivities").get();
-    log(`Found ${activitiesSnapshot.size} total live activities`);
-
-    const departuresCache: Record<string, DepartureInfo[]> = {};
-
-    // Process each activity
-    const updatePromises = activitiesSnapshot.docs.map(async doc => {
-      const activity = doc.data() as LiveActivity;
-
-      try {
-        // Check if activity is older than 1 hour
-        const activityAge = activity.createdAt as Timestamp;
-        const now = Timestamp.now();
-        const oneHourAgo = new Timestamp(now.seconds - 3600, now.nanoseconds);
-        const isOlderThanOneHour = activityAge.seconds < oneHourAgo.seconds;
-
-        if (isOlderThanOneHour) {
-          await _sendEndNotification(activity, apnProvider);
-        } else {
-          await _sendUpdateNotification(activity, departuresCache, apnProvider);
-        }
-      } catch (err) {
-        logError(`Error processing activity ${activity.activityId}:`, err);
-      }
-    });
-
-    await Promise.all(updatePromises);
-    log("Completed live activities update");
-  } catch (err) {
-    logError("Error in updateLiveActivities:", err);
-  }
-}
