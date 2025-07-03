@@ -46,9 +46,9 @@ export async function getDeparturesForStation(params: {
       predictedTime,
       id: dep.tripId,
       line: {
-        name: dep.line?.name || "?",
-        productName: dep.line?.productName || "?",
-        product: (dep.line?.product || "?") as Product,
+        name: dep.line?.name,
+        productName: dep.line?.productName,
+        product: dep.line?.product as Product,
       },
       destination: dep.direction || dep.destination?.name || "Unknown",
       isCancelled: dep.cancelled || false,

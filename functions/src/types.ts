@@ -54,9 +54,9 @@ export interface LiveActivityDepartureInfo extends DepartureInfo {
 export interface StationDepartureInfo extends DepartureInfo {
   id: string;
   line: {
-    name: string;
-    productName: string;
-    product: Product;
+    name?: string;
+    productName?: string;
+    product?: Product;
   };
   destination: string;
   isCancelled: boolean;
