@@ -1,16 +1,23 @@
 import { getDeparturesForStation } from "./departures.js";
 import { update } from "./live-activity.js";
 import { search } from "./search-stations.js";
-import { Environment, ProductInApp } from "./types.js";
+import { Environment, Product } from "./types.js";
 import { initializeApp } from "firebase-admin/app";
 import { log, error as logError } from "firebase-functions/logger";
 import { defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { createClient } from "hafas-client";
+import { Profile, createClient } from "hafas-client";
 import { profile as bvgProfile } from "hafas-client/p/bvg/index.js";
+import { profile as vbbProfile } from "hafas-client/p/vbb/index.js";
 
-const hafasClient = createClient(bvgProfile, "departures-api");
+const profiles = {
+  bvg: bvgProfile as Profile,
+  vbb: vbbProfile as Profile,
+};
+
+const profile = profiles.vbb;
+const hafasClient = createClient(profile, "when-api");
 
 const environment: Environment = {
   apnsKey: defineString("APNS_KEY"),
@@ -39,11 +46,11 @@ export const searchStations = onCall(
     }
 
     try {
-      const suggestions = await search(environment, query);
-      log(`searchStations: fetched ${suggestions.length} suggestions for query ${query}`);
-      return { suggestions };
+      const results = await search(environment, query);
+      log(`searchStations: fetched ${results.length} results for query "${query}"`);
+      return { results };
     } catch (err) {
-      logError("searchStations: failed getting suggestions", err);
+      logError(`searchStations: failed getting results for query "${query}"`, err);
       throw new HttpsError("unknown", (err as Error)?.message || "Station search failed", err);
     }
   }
@@ -51,13 +58,13 @@ export const searchStations = onCall(
 
 // MARK: - Function for listing departures for a station id
 
-export const listDepartures = onCall(
+export const queryDepartures = onCall(
   {
     region: REGION,
   },
   async request => {
     const stationId = request.data?.stationId;
-    const products = (request.data?.products || []) as ProductInApp[];
+    const products = (request.data?.products || []) as Product[];
     const showCancelledDepartures = request.data?.showCancelledDepartures || false;
 
     if (typeof stationId !== "string" || !stationId.trim()) {
@@ -67,17 +74,24 @@ export const listDepartures = onCall(
     if (!Array.isArray(products)) {
       throw new HttpsError("invalid-argument", "Invalid 'products' parameter");
     }
-    if (products.some(product => !Object.values(ProductInApp).includes(product))) {
+    if (products.some(product => !Object.values(Product).includes(product))) {
       throw new HttpsError("invalid-argument", "Invalid 'products' parameter");
     }
 
     try {
-      const departures = await getDeparturesForStation(environment, stationId, products, showCancelledDepartures);
-      log(`listDepartures: fetched ${departures.length} departures for station ${stationId}`);
+      const departures = await getDeparturesForStation({
+        environment,
+        stationId,
+        products,
+        showCancelledDepartures,
+      });
+      log(
+        `queryDepartures: fetched ${departures.length} departures for station ${stationId}, products: ${products.join(", ")}, showCancelledDepartures: ${showCancelledDepartures}`
+      );
       return { departures };
     } catch (err) {
-      logError("listDepartures: failed getting departures", err);
-      throw new HttpsError("unknown", (err as Error)?.message || "Listing departures failed", err);
+      logError(`queryDepartures: failed getting departures for station ${stationId}`, err);
+      throw new HttpsError("unknown", (err as Error)?.message || "Querying departures failed", err);
     }
   }
 );

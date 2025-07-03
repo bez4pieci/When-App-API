@@ -1,7 +1,7 @@
 import { getEndNotification } from "./apns.js";
 import { getUpdateNotification } from "./apns.js";
 import { getDeparturesForActivity } from "./departures.js";
-import { DepartureInfo, Environment, LiveActivity } from "./types.js";
+import { Environment, LiveActivity, LiveActivityDepartureInfo } from "./types.js";
 import * as apn from "@parse/node-apn";
 import { Timestamp, getFirestore } from "firebase-admin/firestore";
 import { log, error as logError } from "firebase-functions/logger";
@@ -24,7 +24,7 @@ export async function update(environment: Environment) {
     const activitiesSnapshot = await db.collection("liveActivities").get();
     log(`Found ${activitiesSnapshot.size} total live activities`);
 
-    const departuresCache: Record<string, DepartureInfo[]> = {};
+    const departuresCache: Record<string, LiveActivityDepartureInfo[]> = {};
 
     // Process each activity
     const updatePromises = activitiesSnapshot.docs.map(async doc => {
@@ -60,10 +60,10 @@ export async function update(environment: Environment) {
 async function _sendUpdateNotification(
   environment: Environment,
   activity: LiveActivity,
-  departuresCache: Record<string, DepartureInfo[]>,
+  departuresCache: Record<string, LiveActivityDepartureInfo[]>,
   apnProvider: apn.Provider
 ) {
-  const departures = departuresCache[activity.stationId] || (await getDeparturesForActivity(environment, activity));
+  const departures = departuresCache[activity.stationId] || (await getDeparturesForActivity({ environment, activity }));
   departuresCache[activity.stationId] = departures;
 
   log(`Got ${departures.length} departures for station ${activity.stationName}`);

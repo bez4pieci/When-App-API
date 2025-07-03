@@ -10,16 +10,15 @@ export interface Environment {
   hafasClient: HafasClient;
 }
 
-export enum ProductInApp {
-  suburbanTrain = "suburbanTrain",
+// See https://github.com/public-transport/hafas-client/blob/6/p/vbb/products.js
+export enum Product {
+  suburban = "suburban",
   subway = "subway",
   tram = "tram",
   bus = "bus",
-  regionalTrain = "regionalTrain",
   ferry = "ferry",
-  highSpeedTrain = "highSpeedTrain",
-  onDemand = "onDemand",
-  cablecar = "cablecar",
+  regional = "regional",
+  express = "express",
 }
 
 export interface LiveActivity {
@@ -29,14 +28,36 @@ export interface LiveActivity {
   pushToken: string;
   stationId: string;
   stationName: string;
-  enabledProducts: ProductInApp[];
+  enabledProducts: Product[];
   showCancelledDepartures: boolean;
 }
 
+export interface SearchResult {
+  id: string;
+  name: string;
+  latitude?: number;
+  longitude?: number;
+  products: Product[];
+}
+
 export interface DepartureInfo {
-  lineLabel: string;
-  destination: string;
   plannedTime: number;
   predictedTime: number | null;
+}
+
+export interface LiveActivityDepartureInfo extends DepartureInfo {
+  lineLabel: string;
+  destination: string;
+  isCancelled: boolean;
+}
+
+export interface StationDepartureInfo extends DepartureInfo {
+  id: string;
+  line: {
+    name: string;
+    productName: string;
+    product: Product;
+  };
+  destination: string;
   isCancelled: boolean;
 }

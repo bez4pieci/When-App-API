@@ -1,59 +1,89 @@
-import { DepartureInfo, Environment, LiveActivity, ProductInApp } from "./types.js";
+import {
+  DepartureInfo,
+  Environment,
+  LiveActivity,
+  LiveActivityDepartureInfo,
+  Product,
+  StationDepartureInfo,
+} from "./types.js";
 import { Alternative } from "hafas-client";
 import { Departures } from "hafas-client";
 
-const productMapping: Record<ProductInApp, string> = {
-  [ProductInApp.suburbanTrain]: "suburban",
-  [ProductInApp.subway]: "subway",
-  [ProductInApp.tram]: "tram",
-  [ProductInApp.bus]: "bus",
-  [ProductInApp.regionalTrain]: "regional",
-  [ProductInApp.ferry]: "ferry",
-  [ProductInApp.highSpeedTrain]: "express",
-  [ProductInApp.onDemand]: "onDemand", // TODO: Verify name
-  [ProductInApp.cablecar]: "cablecar", // TODO: Verify name
-};
-
-export async function getDeparturesForActivity(
-  environment: Environment,
-  activity: LiveActivity
-): Promise<DepartureInfo[]> {
-  return await getDepartures(
+export async function getDeparturesForActivity({
+  environment,
+  activity,
+}: {
+  environment: Environment;
+  activity: LiveActivity;
+}): Promise<LiveActivityDepartureInfo[]> {
+  return await queryDepartures({
     environment,
-    activity.stationId,
-    activity.enabledProducts,
-    activity.showCancelledDepartures
-  );
+    stationId: activity.stationId,
+    products: activity.enabledProducts,
+    showCancelledDepartures: activity.showCancelledDepartures,
+    maxResults: 4,
+    mapDeparture: (dep: Alternative, plannedTime: number, predictedTime: number | null): LiveActivityDepartureInfo => ({
+      plannedTime,
+      predictedTime,
+      lineLabel: dep.line?.name || "?",
+      destination: dep.direction || dep.destination?.name || "Unknown",
+      isCancelled: dep.cancelled || false,
+    }),
+  });
 }
 
-export async function getDeparturesForStation(
-  environment: Environment,
-  stationId: string,
-  products: ProductInApp[],
-  showCancelledDepartures: boolean
-): Promise<DepartureInfo[]> {
-  return await getDepartures(environment, stationId, products, showCancelledDepartures);
+export async function getDeparturesForStation(params: {
+  environment: Environment;
+  stationId: string;
+  products: Product[];
+  showCancelledDepartures: boolean;
+}): Promise<StationDepartureInfo[]> {
+  return await queryDepartures({
+    ...params,
+    maxResults: 40,
+    mapDeparture: (dep: Alternative, plannedTime: number, predictedTime: number | null): StationDepartureInfo => ({
+      plannedTime,
+      predictedTime,
+      id: dep.tripId,
+      line: {
+        name: dep.line?.name || "?",
+        productName: dep.line?.productName || "?",
+        product: (dep.line?.product || "?") as Product,
+      },
+      destination: dep.direction || dep.destination?.name || "Unknown",
+      isCancelled: dep.cancelled || false,
+    }),
+  });
 }
 
-async function getDepartures(
-  environment: Environment,
-  stationId: string,
-  products: ProductInApp[],
-  showCancelledDepartures: boolean
-): Promise<DepartureInfo[]> {
+async function queryDepartures<T extends DepartureInfo>({
+  environment,
+  stationId,
+  products,
+  showCancelledDepartures,
+  maxResults = 10,
+  mapDeparture,
+}: {
+  environment: Environment;
+  stationId: string;
+  products: Product[];
+  showCancelledDepartures: boolean;
+  maxResults?: number;
+  mapDeparture: (dep: Alternative, plannedTime: number, predictedTime: number | null) => T;
+}): Promise<T[]> {
   const departures: Departures = await environment.hafasClient.departures(stationId, {
-    // We need 4 departures, but there is no filter for cancelled departures, so we need to fetch more and filter later
-    results: showCancelledDepartures ? 4 : 10,
+    // We need maxResults departures, but there is no filter for cancelled departures, so we need to fetch more and filter later
+    results: showCancelledDepartures ? maxResults : Math.floor(maxResults * 1.4),
 
     // Look ahead 8 hours, so that we catch departures in the morning, if queried in the evening
     duration: 60 * 8,
 
-    products: Object.fromEntries(
-      Object.entries(productMapping).map<[string, boolean]>(([key, value]) => [
-        value,
-        products.includes(key as ProductInApp),
-      ])
-    ),
+    // Products have to be explicitly false to be excluded. Hence, add all keys from Product enum,
+    // and set the value to true if the product is in the products parameter, otherwise false.
+    products:
+      products.length === 0
+        ? undefined // Include all products
+        : Object.fromEntries(Object.keys(Product).map(product => [product, products.includes(product as Product)])),
   });
 
   return departures.departures
@@ -62,13 +92,7 @@ async function getDepartures(
       const plannedTime = dep.plannedWhen ? new Date(dep.plannedWhen).getTime() / 1000 : 0;
       const predictedTime = dep.when && dep.when !== dep.plannedWhen ? new Date(dep.when).getTime() / 1000 : null;
 
-      return {
-        lineLabel: dep.line?.name || "?",
-        destination: dep.direction || dep.destination?.name || "Unknown",
-        plannedTime,
-        predictedTime,
-        isCancelled: dep.cancelled || false,
-      };
+      return mapDeparture(dep, plannedTime, predictedTime);
     })
     .sort((a, b) => {
       // Use predictedTime if available, otherwise use plannedTime as the actual time
