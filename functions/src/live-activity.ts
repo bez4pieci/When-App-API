@@ -8,7 +8,6 @@ import { log, error as logError } from "firebase-functions/logger";
 export async function update(environment: Environment) {
   log("Starting live activities update");
 
-  // Initialize APNs provider
   const apnProvider = new apn.Provider({
     token: {
       key: environment.apnsKey.value(),
@@ -52,6 +51,8 @@ export async function update(environment: Environment) {
   } catch (err) {
     logError("Error in updateLiveActivities:", err);
   }
+
+  apnProvider.shutdown();
 }
 
 // MARK: - Private
