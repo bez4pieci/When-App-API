@@ -1,5 +1,4 @@
-import { getEndNotification } from "./apns.js";
-import { getUpdateNotification } from "./apns.js";
+import { getEndNotification, getUpdateNotification } from "./apns.js";
 import { getDeparturesForActivity } from "./departures.js";
 import { Environment, LiveActivity, LiveActivityDepartureInfo } from "./types.js";
 import * as apn from "@parse/node-apn";
@@ -14,7 +13,7 @@ export async function update(environment: Environment) {
     token: {
       key: environment.apnsKey.value(),
       keyId: environment.apnsKeyId.value(),
-      teamId: environment.appleDveloperTeamId.value(),
+      teamId: environment.appleDeveloperTeamId.value(),
     },
     production: process.env.NODE_ENV === "production",
   });
