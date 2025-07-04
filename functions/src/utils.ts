@@ -10,9 +10,10 @@ export function getStationName(name: string): StationName {
 
   // If name ends with a comma and a word, e.g., "Brandenburg, Hauptbahnhof", extract the word and remove it from the name
   const extraNamesAfterComma = ["Hauptbahnhof", "Bahnhof"];
+  const DELIMITER_COMMA_SPACE = ", ";
   for (const extra of extraNamesAfterComma) {
-    if (name.endsWith(`, ${extra}`)) {
-      name = name.slice(0, -extra.length - 2);
+    if (name.endsWith(`${DELIMITER_COMMA_SPACE}${extra}`)) {
+      name = name.slice(0, -extra.length - DELIMITER_COMMA_SPACE.length);
       extraName = extra;
       break;
     }
