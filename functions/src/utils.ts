@@ -7,6 +7,13 @@ export function getStationName(originalName: string): StationName {
   let extraInfo = undefined;
   let place = undefined;
 
+  // If name ends with something like " [Gleis 1-8]", extract it
+  const infoMatch = clean.match(/ \[([^\]]+)\]$/);
+  if (infoMatch) {
+    extraInfo = infoMatch[1];
+    clean = clean.slice(0, -infoMatch[0].length);
+  }
+
   // If name ends with a comma and a word, e.g., "Brandenburg, Hauptbahnhof", extract the word and remove it from the name
   const STATION_SUFFIXES = ["Hauptbahnhof", "Bahnhof"];
   const DELIMITER_COMMA_SPACE = ", ";
@@ -37,13 +44,6 @@ export function getStationName(originalName: string): StationName {
     clean = clean.slice(0, -BHF_SUFFIX.length);
     stationSuffix = "Bahnhof";
     stationSuffixShort = undefined; // Do not set short name for Bahnhof
-  }
-
-  // If name ends with something like " [Gleis 1-8]", extract it
-  const infoMatch = clean.match(/ \[([^\]]+)\]$/);
-  if (infoMatch) {
-    extraInfo = infoMatch[1];
-    clean = clean.slice(0, -infoMatch[0].length);
   }
 
   // if name still ends with "Hauptbahnhof", extract it

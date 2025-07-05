@@ -174,7 +174,7 @@ describe("getStationName", () => {
     const result = getStationName("Berlin, Hauptbahnhof [Gleis 1-8]");
     expect(result).toEqual({
       raw: "Berlin, Hauptbahnhof [Gleis 1-8]",
-      clean: "Berlin,",
+      clean: "Berlin",
       suffix: "Hauptbahnhof",
       suffixShort: "Hbf",
       extraInfo: "Gleis 1-8",
@@ -186,11 +186,11 @@ describe("getStationName", () => {
     const result = getStationName("Station (Berlin) [Info]");
     expect(result).toEqual({
       raw: "Station (Berlin) [Info]",
-      clean: "Station (Berlin)",
+      clean: "Station",
       suffix: undefined,
       suffixShort: undefined,
       extraInfo: "Info",
-      place: undefined,
+      place: "Berlin",
     });
   });
 
@@ -206,12 +206,13 @@ describe("getStationName", () => {
     });
   });
 
+  // TODO: Is there a case like this?
   it("should handle station names with Bhf suffix, Berlin place and extra info", () => {
     const result = getStationName("Station (Berlin) Bhf [Platform 1]");
     expect(result).toEqual({
       raw: "Station (Berlin) Bhf [Platform 1]",
-      clean: "Station (Berlin) Bhf",
-      suffix: undefined,
+      clean: "Station (Berlin)",
+      suffix: "Bahnhof",
       suffixShort: undefined,
       extraInfo: "Platform 1",
       place: undefined,
