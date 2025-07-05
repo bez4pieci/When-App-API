@@ -58,7 +58,7 @@ export async function getDeparturesForStation(params: {
 }
 
 function getDestination(dep: Alternative): StationName {
-  const name = dep.direction || dep.destination?.name || "Unknown";
+  const name = dep.destination?.name || dep.direction || "Unknown";
   return getStationName(name);
 }
 
