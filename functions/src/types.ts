@@ -22,11 +22,12 @@ export enum Product {
 }
 
 export interface StationName {
-  name: string;
-  extraName?: string;
-  extraShortName?: string;
+  clean: string; // Cleaned name, e.g. "S Südkreuz"
+  raw: string; // Original name from HAFAS
+  suffix?: string;
+  suffixShort?: string;
   extraInfo?: string;
-  extraPlace?: string;
+  place?: string;
 }
 
 export interface LiveActivity {
