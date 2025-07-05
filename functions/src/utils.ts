@@ -36,7 +36,7 @@ export function getStationName(originalName: string): StationName {
   if (clean.endsWith(BHF_SUFFIX)) {
     clean = clean.slice(0, -BHF_SUFFIX.length);
     stationSuffix = "Bahnhof";
-    // Do not set short name for Bahnhof
+    stationSuffixShort = undefined; // Do not set short name for Bahnhof
   }
 
   // If name ends with something like " [Gleis 1-8]", extract it
