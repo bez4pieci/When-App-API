@@ -1,4 +1,5 @@
 import { Environment, Product, SearchResult } from "./types.js";
+import { getStationName } from "./utils.js";
 import { Station, Stop } from "hafas-client";
 
 export async function search(environment: Environment, query: string): Promise<SearchResult[]> {
@@ -14,7 +15,7 @@ export async function search(environment: Environment, query: string): Promise<S
     .filter((result): result is (Station | Stop) & { id: string; name: string } => !!result.id && !!result.name)
     .map(result => ({
       id: result.id,
-      name: result.name,
+      stationName: getStationName(result.name),
       latitude: result.location?.latitude,
       longitude: result.location?.longitude,
       products: Object.entries(result.products ?? {})

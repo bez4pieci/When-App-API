@@ -5,9 +5,10 @@ import {
   LiveActivityDepartureInfo,
   Product,
   StationDepartureInfo,
+  StationName,
 } from "./types.js";
-import { Alternative } from "hafas-client";
-import { Departures } from "hafas-client";
+import { getStationName } from "./utils.js";
+import { Alternative, Departures } from "hafas-client";
 
 export async function getDeparturesForActivity({
   environment,
@@ -26,7 +27,7 @@ export async function getDeparturesForActivity({
       plannedTime,
       predictedTime,
       lineLabel: dep.line?.name || "?",
-      destination: dep.direction || dep.destination?.name || "Unknown",
+      destination: getDestination(dep),
       isCancelled: dep.cancelled || false,
     }),
   });
@@ -50,10 +51,15 @@ export async function getDeparturesForStation(params: {
         productName: dep.line?.productName,
         product: dep.line?.product as Product,
       },
-      destination: dep.direction || dep.destination?.name || "Unknown",
+      destination: getDestination(dep),
       isCancelled: dep.cancelled || false,
     }),
   });
+}
+
+function getDestination(dep: Alternative): StationName {
+  const name = dep.destination?.name || dep.direction || "Unknown";
+  return getStationName(name);
 }
 
 async function queryDepartures<T extends DepartureInfo>({

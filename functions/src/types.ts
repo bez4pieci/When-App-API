@@ -21,6 +21,15 @@ export enum Product {
   express = "express",
 }
 
+export interface StationName {
+  clean: string; // Cleaned name, e.g. "S Südkreuz"
+  raw: string; // Original name from HAFAS
+  suffix?: string;
+  suffixShort?: string;
+  extraInfo?: string;
+  place?: string;
+}
+
 export interface LiveActivity {
   activityId: string;
   userDeviceId: string;
@@ -34,7 +43,7 @@ export interface LiveActivity {
 
 export interface SearchResult {
   id: string;
-  name: string;
+  stationName: StationName;
   latitude?: number;
   longitude?: number;
   products: Product[];
@@ -47,7 +56,7 @@ export interface DepartureInfo {
 
 export interface LiveActivityDepartureInfo extends DepartureInfo {
   lineLabel: string;
-  destination: string;
+  destination: StationName;
   isCancelled: boolean;
 }
 
@@ -58,6 +67,6 @@ export interface StationDepartureInfo extends DepartureInfo {
     productName?: string;
     product?: Product;
   };
-  destination: string;
+  destination: StationName;
   isCancelled: boolean;
 }
