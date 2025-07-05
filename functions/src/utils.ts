@@ -7,12 +7,10 @@ export function getStationName(originalName: string): StationName {
   let extraInfo = undefined;
   let place = undefined;
 
-  //console.log(`"${name}" | ${extraName} | ${extraShortName} | ${extraInfo} | ${extraPlace}`);
-
   // If name ends with a comma and a word, e.g., "Brandenburg, Hauptbahnhof", extract the word and remove it from the name
-  const extraNamesAfterComma = ["Hauptbahnhof", "Bahnhof"];
+  const STATION_SUFFIXES = ["Hauptbahnhof", "Bahnhof"];
   const DELIMITER_COMMA_SPACE = ", ";
-  for (const extra of extraNamesAfterComma) {
+  for (const extra of STATION_SUFFIXES) {
     if (clean.endsWith(`${DELIMITER_COMMA_SPACE}${extra}`)) {
       clean = clean.slice(0, -extra.length - DELIMITER_COMMA_SPACE.length);
       stationSuffix = extra;
@@ -34,8 +32,9 @@ export function getStationName(originalName: string): StationName {
   }
 
   // if name ends with "Bhf", extract it
-  if (clean.endsWith(" Bhf")) {
-    clean = clean.slice(0, -4);
+  const BHF_SUFFIX = " Bhf";
+  if (clean.endsWith(BHF_SUFFIX)) {
+    clean = clean.slice(0, -BHF_SUFFIX.length);
     stationSuffix = "Bahnhof";
     // Do not set short name for Bahnhof
   }
@@ -48,13 +47,12 @@ export function getStationName(originalName: string): StationName {
   }
 
   // if name still ends with "Hauptbahnhof", extract it
-  if (clean.endsWith(" Hauptbahnhof")) {
-    clean = clean.slice(0, -13);
+  const HAUPTBAHNHOF_SUFFIX = " Hauptbahnhof";
+  if (clean.endsWith(HAUPTBAHNHOF_SUFFIX)) {
+    clean = clean.slice(0, -HAUPTBAHNHOF_SUFFIX.length);
     stationSuffix = "Hauptbahnhof";
     stationSuffixShort = "Hbf";
   }
-
-  //console.log(`"${name}" | ${extraName} | ${extraShortName} | ${extraInfo} | ${extraPlace}`);
 
   return {
     raw: originalName,
